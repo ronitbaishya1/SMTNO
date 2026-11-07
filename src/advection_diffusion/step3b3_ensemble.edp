@@ -1,0 +1,94 @@
+// SMTNO Step 3B.3: homogeneous-source 2D transient advection-diffusion-reaction.
+// Operator matches published Example 3; varied initial conditions are NEW numerical tests.
+// P1 FEM, backward Euler, optional SUPG; zero Dirichlet boundary conditions.
+include "getARGV.idp"
+
+int n = getARGV("-n", 128);
+real eps = getARGV("-eps", 0.01);
+real dtRequest = getARGV("-dt", 0.00125);
+real Tf = getARGV("-T", 0.2);
+int saveEvery = getARGV("-save", 8);
+int useSUPG = getARGV("-supg", 1);
+string outdir = getARGV("-out", "results");
+real amp1 = getARGV("-amp1", 1.0);
+real amp2 = getARGV("-amp2", 0.3);
+real xc1 = getARGV("-xc1", 0.35);
+real yc1 = getARGV("-yc1", 0.45);
+real xc2 = getARGV("-xc2", 0.62);
+real yc2 = getARGV("-yc2", 0.63);
+real width1 = getARGV("-w1", 0.14);
+real width2 = getARGV("-w2", 0.11);
+
+if ((n < 4) || (eps <= 0) || (dtRequest <= 0) || (Tf <= 0) ||
+    (saveEvery < 1) || (width1 <= 0) || (width2 <= 0)) {
+    cout << "ERROR: invalid numerical parameters" << endl;
+    exit(1);
+}
+
+int nSteps = int(Tf / dtRequest + 0.5);
+if (nSteps < 2) { cout << "ERROR: too few time steps" << endl; exit(1); }
+real dt = Tf / nSteps;
+real PI = acos(-1.0);
+real bx = cos(PI/3.0);
+real by = sin(PI/3.0);
+real react = 1.0;
+real h = 1.0 / n;
+real hElem = sqrt(2.0)*h;
+real betaNorm = sqrt(bx*bx+by*by);
+real tau = 0.0;
+if (useSUPG == 1) {
+    tau = 1.0/sqrt(pow(2.0/dt,2.0) + pow(2.0*betaNorm/hElem,2.0)
+               + pow(4.0*eps/(hElem*hElem),2.0) + react*react);
+}
+
+mesh Th = square(n,n);
+fespace Vh(Th,P1);
+Vh u, uold, v;
+
+func startProfile = sin(PI*x)*sin(PI*y) * (
+      amp1*exp(-((x-xc1)*(x-xc1)+(y-yc1)*(y-yc1))/(2.0*width1*width1))
+    + amp2*exp(-((x-xc2)*(x-xc2)+(y-yc2)*(y-yc2))/(2.0*width2*width2)));
+uold = startProfile;
+u = uold;
+
+problem advance(u,v,solver=UMFPACK)
+    = int2d(Th)(
+        u*v/dt
+        + eps*(dx(u)*dx(v)+dy(u)*dy(v))
+        + (bx*dx(u)+by*dy(u))*v + react*u*v
+        + tau*(bx*dx(v)+by*dy(v))*(u/dt+bx*dx(u)+by*dy(u)+react*u)
+      )
+    - int2d(Th)(
+        uold*v/dt + tau*(bx*dx(v)+by*dy(v))*uold/dt
+      )
+    + on(1,2,3,4,u=0.0);
+
+ofstream fields(outdir + "/fields.csv");
+ofstream metrics(outdir + "/metrics.csv");
+fields.precision(16);
+metrics.precision(16);
+fields << "step,time,x,y,u,exact" << endl;
+metrics << "step,time,n,dt,epsilon,method,min_u,max_u,integral_u" << endl;
+
+string methodName="galerkin";
+if (useSUPG == 1) methodName="supg";
+for (int k=0;k<=nSteps;k++) {
+    real tk = k*dt;
+    if ((k==0) || (k==nSteps) || (k%saveEvery==0)) {
+        real integralU = int2d(Th)(u);
+        metrics << k << "," << tk << "," << n << "," << dt << "," << eps
+                << "," << methodName << "," << u[].min << "," << u[].max
+                << "," << integralU << endl;
+        for (int iv=0;iv<Th.nv;iv++) {
+            real xx=Th(iv).x;
+            real yy=Th(iv).y;
+            fields << k << "," << tk << "," << xx << "," << yy
+                   << "," << u(xx,yy) << "," << -1.0 << endl;
+        }
+        cout << "SAVED n=" << n << " step=" << k << " time=" << tk << endl;
+    }
+    if (k==nSteps) break;
+    advance;
+    uold=u;
+}
+cout << "DONE n=" << n << " dt=" << dt << " eps=" << eps << endl;
