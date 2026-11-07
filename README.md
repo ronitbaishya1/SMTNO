@@ -1,10 +1,18 @@
 # SMTNO — Scale–Memory–Time Neural Operator
 
-Source code for ongoing scientific machine learning research on coarse/fine PDE dynamics, closure, memory and multirate time evolution.
+Research code for multiscale numerical PDEs, effective coarse-scale closure, history-dependent learning and future local/global time integration.
 
-- `src/burgers_pilots/`: earlier FNO, closure, memory and scale-switch pilots (Steps 2A–2D.4).
-- `src/advection_diffusion/`: FreeFEM++ and Python numerical benchmarks and memory tests (Steps 3A–3C.2).
-- `colab/`: source-only training launchers and cleaned historical Colab work.
-- `docs/`: experiment status and environment notes.
+## Repository layout
 
-Generated datasets, results, plots and checkpoints are deliberately not tracked. Joint learned scale-memory transfer, asynchronous local/global time stepping and optimal control remain proposed research stages, not completed experiments.
+- `src/burgers_pilots/` — earlier FNO, coarse closure, scale-switching and memory experiments (Steps 2A–2D.4).
+- `src/advection_diffusion/` — FreeFEM++ and Python benchmarks, filtering, closure and numerical audits (Steps 3A–3C.1).
+- `colab/` — GPU training launcher; source files remain ordinary Python programs.
+- `docs/` — Mac setup, Colab workflow and research status.
+
+**No simulation datasets, checkpoints, output images, results directories or logs are tracked.** Code needed for Step 3C.2 is in the accompanying source package but its four individual scripts are not yet committed.
+
+## Research status
+
+Advection–diffusion provides a useful numerical negative control for memory, while multiple-rate mobile–immobile transport is being used as a physically motivated memory benchmark. A learned joint scale–memory transformation, asynchronous local/global time stepping, and optimal control remain planned work, not validated results.
+
+FreeFEM++ is needed for the `.edp` solvers. Python dependencies are in `requirements.txt`.

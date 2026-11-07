@@ -1,0 +1,4 @@
+*.py text eol=lf
+*.edp text eol=lf
+*.md text eol=lf
+*.ipynb text eol=lf
