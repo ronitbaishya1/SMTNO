@@ -1,0 +1,73 @@
+
+/*
+ SMTNO - Stage 1
+ 1D viscous Burgers equation
+ Periodic P1 finite elements
+*/
+
+load "msh3"
+
+verbosity = 0;
+
+// Parameters
+int N = 128;
+real nu = 0.02;
+real dt = 0.0005;
+real T = 0.2;
+int steps = T/dt;
+
+// 1D mesh on [0,1]
+meshL Th = segment(N);
+
+// Periodic FEM space
+fespace Vh(Th, P1, periodic=[[1],[2]]);
+Vh u, uold, v;
+
+// Initial condition
+u = sin(2*pi*x) + 0.25*sin(4*pi*x);
+
+// Semi-implicit time discretization:
+// implicit diffusion, explicit nonlinear flux
+problem Burgers(u, v, solver=UMFPACK)
+    = int1d(Th)(
+          u*v/dt
+        + nu*dx(u)*dx(v)
+      )
+    - int1d(Th)(
+          uold*v/dt
+        + 0.5*uold*uold*dx(v)
+      );
+
+// Store trajectory snapshots
+ofstream fout("../../datasets/raw/burgers_1d.csv");
+fout << "time,x,u" << endl;
+
+real mass0 = int1d(Th)(u);
+
+for (int n = 0; n <= steps; n++)
+{
+    if (n % 40 == 0)
+    {
+        real t = n*dt;
+
+        for (int j = 0; j <= N; j++)
+        {
+            real xp = 1.0*j/N;
+            fout << t << "," << xp
+                 << "," << u(xp) << endl;
+        }
+
+        cout << "t = " << t
+             << "  mass error = "
+             << int1d(Th)(u)-mass0
+             << endl;
+    }
+
+    if (n < steps)
+    {
+        uold = u;
+        Burgers;
+    }
+}
+
+cout << "Burgers simulation complete." << endl;

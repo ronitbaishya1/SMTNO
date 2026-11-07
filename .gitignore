@@ -1,4 +1,4 @@
-# Generated numerical data, visualizations and weights
+# Generated outputs and numerical data
 **/results/
 **/data/
 **/datasets/
@@ -21,6 +21,9 @@
 *.jpeg
 *.gif
 *.log
+*.zip
+*.tar
+*.tar.gz
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/

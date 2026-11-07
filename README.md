@@ -1,18 +1,19 @@
-# SMTNO — Scale–Memory–Time Neural Operator
+# SMTNO — Scale–Memory–Time Neural Operator (Research Development)
 
-Research code for multiscale numerical PDEs, effective coarse-scale closure, history-dependent learning and future local/global time integration.
+Scientific-machine-learning research exploring the transfer of effective coarse PDE dynamics, unresolved memory, and eventually local/global time evolution across physical scales.
 
-## Repository layout
+## Code layout
 
-- `src/burgers_pilots/` — earlier FNO, coarse closure, scale-switching and memory experiments (Steps 2A–2D.4).
-- `src/advection_diffusion/` — FreeFEM++ and Python benchmarks, filtering, closure and numerical audits (Steps 3A–3C.1).
-- `colab/` — GPU training launcher; source files remain ordinary Python programs.
-- `docs/` — Mac setup, Colab workflow and research status.
+- `src/burgers_1d/` — original FreeFEM++ Burgers numerical experiments (Step 1).
+- `src/burgers_pilots/` — earlier Burgers, scale-switching, residual and memory pilots (Steps 2A–2D.4D).
+- `src/advection_diffusion/` — FreeFEM++ benchmarks, spatial filtering, weak-form closure, boundary/time audits and FNO memory controls (Steps 3A–3C.2).
+- `colab/` — cleaned historical Colab notebook and an optional source-only training launcher.
+- `docs/` — experiment and numerical caveats.
 
-**No simulation datasets, checkpoints, output images, results directories or logs are tracked.** Code needed for Step 3C.2 is in the accompanying source package but its four individual scripts are not yet committed.
+## Status
 
-## Research status
+The advection–diffusion benchmark is a numerical negative control for memory. The mobile–immobile transport model is the first physically motivated memory benchmark. Joint learned scale–memory transfer, local/global asynchronous time integration, and optimal control are **research objectives**, not implemented results.
 
-Advection–diffusion provides a useful numerical negative control for memory, while multiple-rate mobile–immobile transport is being used as a physically motivated memory benchmark. A learned joint scale–memory transformation, asynchronous local/global time stepping, and optimal control remain planned work, not validated results.
+All generated datasets, plots, metrics, model checkpoints and run logs are excluded. Full experimentation requires generating or supplying data separately. FreeFEM++ is required for the Step 3A and 3B.3 `.edp` solvers; it is not a Python package.
 
-FreeFEM++ is needed for the `.edp` solvers. Python dependencies are in `requirements.txt`.
+The `Project_Execution_legacy.ipynb` reflects the user's earlier Drive layout and may reference scripts or outputs no longer stored in those exact locations. Use the `.py` source scripts for the reproducible pipeline.

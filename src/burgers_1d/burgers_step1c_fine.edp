@@ -1,0 +1,36 @@
+
+verbosity = 0;
+int N = 512;
+real dt = 0.000125;
+real nu = 0.02;
+int steps = 1600;
+int saveEvery = 20;
+
+meshL Th = segment(N);
+fespace Vh(Th, P1, periodic=[[1],[2]]);
+Vh u, uold, v;
+u = sin(2*pi*x) + 0.25*sin(4*pi*x);
+
+problem Burgers(u,v,solver=UMFPACK)
+  = int1d(Th)(u*v/dt + nu*dx(u)*dx(v))
+  - int1d(Th)(uold*v/dt + 0.5*uold*uold*dx(v));
+
+ofstream fout("/Users/ronitbaishya/Desktop/IIT Guwahati/SMTNO/datasets/raw/burgers_step1c_fine.csv");
+fout.precision(17);
+fout << "time,x,u" << endl;
+real mass0 = int1d(Th)(u);
+for (int n=0; n<=steps; n++) {
+    if (n % saveEvery == 0) {
+        real t = n*dt;
+        for (int j=0; j<=N; j++) {
+            real xx = 1.0*j/N;
+            fout << t << "," << xx << "," << u(xx) << endl;
+        }
+    }
+    if (n < steps) {
+        uold = u;
+        Burgers;
+    }
+}
+cout << "Step1C completed. mass error = "
+     << int1d(Th)(u)-mass0 << endl;

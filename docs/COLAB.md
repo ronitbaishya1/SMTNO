@@ -1,11 +1,13 @@
-# Colab workflow
+# Google Colab workflow
 
-The original Google Drive project is under `My Drive/SMTNO/Colab Notebooks`. Source code is now stored on GitHub, while simulation datasets and checkpoints remain in private Drive folders.
+Use [`colab/SMTNO_Training_Colab.ipynb`](../colab/SMTNO_Training_Colab.ipynb) as a launcher for the version-controlled `.py` files. It clones `https://github.com/ronitbaishya1/SMTNO.git`, mounts your Google Drive, and launches training with CUDA when available.
 
-Open `colab/SMTNO_Training_Colab.ipynb` in Google Colab. It clones:
+The notebook expects datasets under `/content/drive/MyDrive/SMTNO/datasets/` and writes checkpoints, metrics and plots to `/content/drive/MyDrive/SMTNO/GPU_runs/`. Change `DATA_ROOT` and `OUTPUT_ROOT` inside the notebook if your Drive layout differs.
 
-`https://github.com/ronitbaishya1/SMTNO.git`
+- Step 3C.1 uses the private `step3B4` dataset.
+- Step 3C.2A repeats advection–diffusion training with three random seeds.
+- Step 3C.2B uses the private `step3C2B` mobile–immobile transport dataset. Generate and audit it before training.
 
-The notebook expects private datasets in `/content/drive/MyDrive/SMTNO/datasets/`. Change `DATA_ROOT` if your actual data location differs. Set CUDA runtime under **Runtime → Change runtime type**.
+The older `colab/Project_Execution_legacy.ipynb` is preserved for research history; its cells refer to the original `MyDrive/SMTNO/Colab Notebooks` paths.
 
-The GitHub `src/advection_diffusion/` folder currently contains source through Step 3C.1. Add the separately packaged Step 3C.2 Python files before running its MRMT training command from Colab. Do not upload datasets or tokens to GitHub.
+Never commit generated datasets, logs, model checkpoints, access tokens or outputs.
