@@ -1,0 +1,144 @@
+// SMTNO Step 3A: published transient CDR FEM benchmarks.
+// Cengizci, Ugur, Natesan, CPC 329 (2026) 110375, Examples 3 & 5.
+// P1 implicit Euler with standard Galerkin or time-consistent SUPG.
+// Not the paper's full SUPG-YZbeta shock-capturing/PINN scheme.
+include "getARGV.idp"
+
+int caseID = getARGV("-case", 3);
+int n = getARGV("-n", 32);
+real dtRequested = getARGV("-dt", 0.005);
+real defaultT = 1.0;
+if (caseID == 5) defaultT = 0.25;
+real Tf = getARGV("-T", defaultT);
+real eps = getARGV("-eps", 0.01);
+int saveEvery = getARGV("-save", 20);
+int useSUPG = getARGV("-supg", 1);
+string outdir = getARGV("-out", "results");
+
+if ((caseID != 3) && (caseID != 5)) { cout << "ERROR: -case must be 3 or 5" << endl; exit(1); }
+if ((n < 4) || (dtRequested <= 0) || (Tf <= 0) || (eps <= 0) || (saveEvery < 1)) {
+    cout << "ERROR: invalid numerical inputs" << endl; exit(1);
+}
+int nSteps = int(Tf / dtRequested + 0.5);
+if (nSteps < 1) { cout << "ERROR: too few time steps" << endl; exit(1); }
+real dt = Tf / nSteps;
+real PI = acos(-1.);
+real bx = cos(PI/3.0);
+real by = sin(PI/3.0);
+real react = 1.0;
+real case3Factor = 1.0;
+real case5Factor = 0.0;
+if (caseID == 5) {
+    bx = 1.0/sqrt(2.0);
+    by = 1.0/sqrt(2.0);
+    react = 0.0;
+    case3Factor = 0.0;
+    case5Factor = 1.0;
+}
+real h = 1.0/n;
+real hElem = sqrt(2.0)*h;
+real betaNorm = sqrt(bx*bx + by*by);
+real tau = 0.0;
+if (useSUPG == 1) {
+    tau = 1.0/sqrt(pow(2.0/dt, 2.0)
+                  + pow(2.0*betaNorm/hElem, 2.0)
+                  + pow(4.0*eps/(hElem*hElem), 2.0)
+                  + react*react);
+}
+real currentTime = 0.0;
+
+mesh Th = square(n, n);
+fespace Vh(Th,P1);
+Vh u, uold, v;
+
+// Paper Example 3 exact traveling internal layer (Eq. 57).
+func zz = (x + y - currentTime - 0.5) / sqrt(eps);
+func tt = tanh(zz);
+func sech2 = 1.0 - tt*tt;
+func qq = 0.5*sin(PI*x)*sin(PI*y);
+func qqx = 0.5*PI*cos(PI*x)*sin(PI*y);
+func qqy = 0.5*PI*sin(PI*x)*cos(PI*y);
+func exactU = qq*(1.0 + tt);
+func exactUt = -qq*sech2/sqrt(eps);
+func exactUx = qqx*(1.0 + tt) + qq*sech2/sqrt(eps);
+func exactUy = qqy*(1.0 + tt) + qq*sech2/sqrt(eps);
+func exactLap = -2.0*PI*PI*qq*(1.0 + tt)
+            + 2.0*(qqx + qqy)*sech2/sqrt(eps)
+            - 4.0*qq*tt*sech2/eps;
+func forcing = case3Factor *
+    (exactUt - eps*exactLap + bx*exactUx + by*exactUy + react*exactU);
+
+// Paper Example 5 initial (Eqs. 62-63) and Dirichlet data (Eq. 64).
+func initL = 1.0 * (((x <= 0.5) && (y <= 0.25)) ||
+                          ((x <= 0.25) && (y <= 0.5)));
+func bcL = 1.0 * (((y < 1.0e-10) && (x <= 0.5)) ||
+                        ((x < 1.0e-10) && (y <= 0.5)));
+func boundaryValue = case5Factor * bcL;
+
+if (caseID == 3) uold = exactU;
+else uold = initL;
+u = uold;
+
+// Time-consistent SUPG for P1: the within-element Laplacian is zero.
+// Evaluate manufactured forcing directly at integration points, not
+// after nodal interpolation (important for narrow internal layers).
+problem advance(u,v,solver=UMFPACK)
+  = int2d(Th)(
+       u*v/dt
+       + eps*(dx(u)*dx(v) + dy(u)*dy(v))
+       + (bx*dx(u) + by*dy(u))*v + react*u*v
+       + tau*(bx*dx(v) + by*dy(v))
+                *(u/dt + bx*dx(u) + by*dy(u) + react*u)
+    )
+    - int2d(Th,qforder=9)(
+       (uold/dt + forcing)*v
+       + tau*(bx*dx(v) + by*dy(v))*(uold/dt + forcing)
+    )
+    + on(1,2,3,4,u=boundaryValue);
+
+string methodName = "galerkin";
+if (useSUPG == 1) methodName = "supg";
+
+ofstream fields(outdir + "/fields.csv");
+ofstream metrics(outdir + "/metrics.csv");
+fields.precision(16);
+metrics.precision(16);
+fields << "step,time,x,y,u,exact" << endl;
+metrics << "step,time,n,dt,epsilon,method,l2_error,l2_relative,min_u,max_u,integral_u" << endl;
+
+for (int k = 0; k <= nSteps; k++) {
+    currentTime = k*dt;
+    if ((k == 0) || (k == nSteps) || (k % saveEvery == 0)) {
+        real m = int2d(Th)(u);
+        real l2 = -1.0;
+        real rel = -1.0;
+        if (caseID == 3) {
+            l2 = sqrt(int2d(Th,qforder=9)((u-exactU)*(u-exactU)));
+            rel = l2/(sqrt(int2d(Th,qforder=9)(exactU*exactU)) + 1.0e-14);
+        }
+        metrics << k << "," << currentTime << "," << n << "," << dt << ","
+                << eps << "," << methodName << ","
+                << l2 << "," << rel << "," << u[].min << "," << u[].max
+                << "," << m << endl;
+        for (int iv=0; iv < Th.nv; iv++) {
+            real xx = Th(iv).x;
+            real yy = Th(iv).y;
+            real exactPoint = -1.0;
+            if (caseID == 3) {
+                exactPoint = 0.5*sin(PI*xx)*sin(PI*yy)
+                        *(1.0+tanh((xx+yy-currentTime-0.5)/sqrt(eps)));
+            }
+            fields << k << "," << currentTime << "," << xx << "," << yy
+                   << "," << u(xx,yy) << "," << exactPoint << endl;
+        }
+        cout << "SAVED case=" << caseID << " n=" << n << " k=" << k
+             << "/" << nSteps << " t=" << currentTime
+             << " relativeL2=" << rel << endl;
+    }
+    if (k == nSteps) break;
+    currentTime = (k+1)*dt;
+    advance;
+    uold = u;
+}
+cout << "DONE case=" << caseID << " n=" << n << " dt=" << dt
+     << " eps=" << eps << " tau=" << tau << endl;
